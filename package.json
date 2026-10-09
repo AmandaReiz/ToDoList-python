@@ -1,0 +1,27 @@
+{
+  "name": "amanda-task-board",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n \"front,back\" -c \"cyan,green\" \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "vite --host 127.0.0.1 --port 5173 --strictPort",
+    "dev:backend": ".venv\\Scripts\\python.exe -m uvicorn main:app --reload --app-dir backend --host 127.0.0.1 --port 8000",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "typescript": "~5.9.3",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "concurrently": "^10.0.6"
+  }
+}

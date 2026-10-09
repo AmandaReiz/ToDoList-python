@@ -1,0 +1,22 @@
+# Dependências Node
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Python / Ambientes virtuais
+.venv/
+env/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+tarefas.db
+
+# Logs e arquivos de sistema
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
