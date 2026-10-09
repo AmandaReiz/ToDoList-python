@@ -94,6 +94,7 @@ Se preferir rodar cada parte em terminais separados:
   ```bash
   npm run dev:frontend
   ```
+  
 
 * **Apenas o Backend:**
   ```bash

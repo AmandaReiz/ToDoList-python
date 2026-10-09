@@ -7,6 +7,7 @@ export type TarefaDaApi = {
   prioridade: Priority
   concluida: boolean
   ordem: number
+  concluida_em?: string | null
 }
 
 const API_URL = 'http://127.0.0.1:8000'
@@ -25,7 +26,7 @@ export const tarefasApi = {
   reordenar: (ids: number[]) =>
     pedido<TarefaDaApi[]>('/tarefas/ordem', { method: 'PUT', body: JSON.stringify({ ids }) }),
   listar: () => pedido<TarefaDaApi[]>('/tarefas'),
-  criar: (dados: Pick<TarefaDaApi, 'titulo' | 'lista' | 'prioridade'>) =>
+  criar: (dados: Pick<TarefaDaApi, 'titulo' | 'lista' | 'prioridade'> & { concluida_em?: string | null }) =>
     pedido<TarefaDaApi>('/tarefas', { method: 'POST', body: JSON.stringify(dados) }),
   atualizar: (id: number, dados: Partial<Omit<TarefaDaApi, 'id'>>) =>
     pedido<TarefaDaApi>(`/tarefas/${id}`, { method: 'PATCH', body: JSON.stringify(dados) }),

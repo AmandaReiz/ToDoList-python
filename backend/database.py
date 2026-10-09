@@ -15,6 +15,11 @@ engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 def criar_banco() -> None:
     """Cria as tabelas definidas em models.py, caso ainda não existam."""
     SQLModel.metadata.create_all(engine)
+    with engine.connect() as conn:
+        colunas = [col[1] for col in conn.exec_driver_sql("PRAGMA table_info(tarefa)").fetchall()]
+        if "concluida_em" not in colunas:
+            conn.exec_driver_sql("ALTER TABLE tarefa ADD COLUMN concluida_em VARCHAR")
+            conn.commit()
 
 
 def obter_sessao():

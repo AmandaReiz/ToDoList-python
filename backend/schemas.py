@@ -7,6 +7,7 @@ class TarefaCriar(SQLModel):
     titulo: str
     lista: str = "Work"
     prioridade: str = "none"
+    concluida_em: str | None = None
 
 
 class TarefaAtualizar(SQLModel):
@@ -15,6 +16,7 @@ class TarefaAtualizar(SQLModel):
     prioridade: str | None = None
     concluida: bool | None = None
     ordem: int | None = None
+    concluida_em: str | None = None
 
 
 class TarefasReordenar(SQLModel):

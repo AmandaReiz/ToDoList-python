@@ -1,6 +1,7 @@
 """API Python do seu projeto To-do."""
 
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -80,12 +81,20 @@ def atualizar_tarefa(
     dados: TarefaAtualizar,
     sessao: Session = Depends(obter_sessao),
 ):
-    """Atualiza somente os campos enviados: conclusão, prioridade, texto ou ordem."""
+    """Atualiza somente os campos enviados: conclusão, prioridade, texto, ordem ou data."""
     tarefa = sessao.get(Tarefa, tarefa_id)
     if not tarefa:
         raise HTTPException(status_code=404, detail="Tarefa não encontrada.")
 
-    for campo, valor in dados.model_dump(exclude_unset=True).items():
+    dados_dict = dados.model_dump(exclude_unset=True)
+    if "concluida" in dados_dict:
+        if dados_dict["concluida"]:
+            if "concluida_em" not in dados_dict and not tarefa.concluida_em:
+                tarefa.concluida_em = datetime.now().isoformat()
+        else:
+            tarefa.concluida_em = None
+
+    for campo, valor in dados_dict.items():
         setattr(tarefa, campo, valor)
 
     sessao.add(tarefa)
@@ -104,5 +113,3 @@ def excluir_tarefa(tarefa_id: int, sessao: Session = Depends(obter_sessao)):
     sessao.delete(tarefa)
     sessao.commit()
     return {"ok": True}
-
-  

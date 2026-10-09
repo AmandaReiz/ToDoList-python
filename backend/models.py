@@ -10,3 +10,4 @@ class Tarefa(SQLModel, table=True):
     prioridade: str = "none"
     concluida: bool = False
     ordem: int = 0
+    concluida_em: str | None = Field(default=None)
