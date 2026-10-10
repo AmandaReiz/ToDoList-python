@@ -4,20 +4,23 @@ import {
   ArrowUp,
   Calendar,
   Check,
+  ChevronDown,
   Clock,
   GripVertical,
   History,
+  Pencil,
   Plus,
   RotateCcw,
+  Trash2,
   X,
 } from 'lucide-react'
 import { tarefasApi, type TarefaDaApi } from './services/tasksApi'
 
-export type Category = 'Estudos' | 'Trabalho' | 'Faculdade' | 'Compras' | 'Outros'
+export type Category = string
 
-const CATEGORIES: Category[] = ['Estudos', 'Trabalho', 'Faculdade', 'Compras', 'Outros']
+const DEFAULT_CATEGORIES: string[] = ['Trabalho', 'Estudos', 'Faculdade', 'Compras', 'Outros']
 
-const CATEGORY_COLORS: Record<Category, string> = {
+const CATEGORY_COLORS: Record<string, string> = {
   Estudos: '#181818',
   Trabalho: '#4b5563',
   Faculdade: '#6b7280',
@@ -25,47 +28,33 @@ const CATEGORY_COLORS: Record<Category, string> = {
   Outros: '#d1d5db',
 }
 
-function resolveCategory(task: TarefaDaApi): Category {
-  const raw = (task.lista || '').trim().toLowerCase()
-  if (raw === 'estudos' || raw === 'estudo') return 'Estudos'
-  if (raw === 'faculdade') return 'Faculdade'
-  if (raw === 'compras' || raw === 'compra') return 'Compras'
-  if (raw === 'outros') return 'Outros'
-  if (raw === 'trabalho' || raw === 'work') {
-    const t = task.titulo.toLowerCase()
-    if (
-      t.includes('estudo') ||
-      t.includes('estudos') ||
-      t.includes('bíblico') ||
-      t.includes('biblico') ||
-      t.includes('wsus') ||
-      t.includes('livro') ||
-      t.includes('curso') ||
-      t.includes('ler')
-    ) {
-      return 'Estudos'
-    }
-    if (
-      t.includes('faculdade') ||
-      t.includes('aula') ||
-      t.includes('prova') ||
-      t.includes('tcc') ||
-      t.includes('matéria') ||
-      t.includes('materia')
-    ) {
-      return 'Faculdade'
-    }
-    if (
-      t.includes('compra') ||
-      t.includes('compras') ||
-      t.includes('mercado') ||
-      t.includes('comprar')
-    ) {
-      return 'Compras'
-    }
-    return 'Trabalho'
+const COLOR_PALETTE = [
+  '#181818',
+  '#4b5563',
+  '#6b7280',
+  '#9ca3af',
+  '#2563eb',
+  '#059669',
+  '#d97706',
+  '#7c3aed',
+  '#db2777',
+]
+
+function getCategoryColor(category: string): string {
+  if (CATEGORY_COLORS[category]) return CATEGORY_COLORS[category]
+  let hash = 0
+  for (let i = 0; i < category.length; i++) {
+    hash = category.charCodeAt(i) + ((hash << 5) - hash)
   }
-  return 'Trabalho'
+  return COLOR_PALETTE[Math.abs(hash) % COLOR_PALETTE.length]
+}
+
+function resolveCategory(task: TarefaDaApi, availableCategories: string[]): string {
+  const raw = (task.lista || '').trim()
+  if (!raw) return availableCategories[0] || 'Trabalho'
+  const match = availableCategories.find((c) => c.toLowerCase() === raw.toLowerCase())
+  if (match) return match
+  return raw.charAt(0).toUpperCase() + raw.slice(1)
 }
 
 export function formatTempoRelativo(dateStr: string | null | undefined): string {
@@ -122,9 +111,20 @@ function isWithinLast12Months(dateStr: string | null | undefined): boolean {
 
 function App() {
   const [tasks, setTasks] = useState<TarefaDaApi[]>([])
+  const [categories, setCategories] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('todolist_categories')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      }
+    } catch {}
+    return DEFAULT_CATEGORIES
+  })
+  const [isManagingCategories, setIsManagingCategories] = useState(false)
   const [view, setView] = useState<'tasks' | 'history'>('tasks')
   const [newTitle, setNewTitle] = useState('')
-  const [newCategory, setNewCategory] = useState<Category>('Trabalho')
+  const [newCategory, setNewCategory] = useState<string>('Trabalho')
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas')
   const [apiError, setApiError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -140,7 +140,17 @@ function App() {
     tarefasApi
       .listar()
       .then((data) => {
-        if (active) setTasks(data)
+        if (active) {
+          setTasks(data)
+          setCategories((current) => {
+            const extra = data
+              .map((t) => (t.lista || '').trim())
+              .filter(Boolean)
+              .map((l) => l.charAt(0).toUpperCase() + l.slice(1))
+            const merged = Array.from(new Set([...current, ...extra]))
+            return merged
+          })
+        }
       })
       .catch(() => {
         if (active) setApiError('Não foi possível carregar suas tarefas. Confira se a API está ligada.')
@@ -163,21 +173,23 @@ function App() {
 
   const filteredCompletedTasks = completedTasks.filter((task) => {
     if (selectedCategory === 'Todas') return true
-    return resolveCategory(task) === selectedCategory
+    return resolveCategory(task, categories) === selectedCategory
   })
 
   // Estatísticas de distribuição da barra de progresso
   const totalCompleted = completedTasks.length
-  const distributionStats = CATEGORIES.map((cat) => {
-    const count = completedTasks.filter((t) => resolveCategory(t) === cat).length
-    const percent = totalCompleted > 0 ? Math.round((count / totalCompleted) * 100) : 0
-    return {
-      category: cat,
-      count,
-      percent,
-      color: CATEGORY_COLORS[cat],
-    }
-  }).filter((item) => item.count > 0 || item.category === 'Estudos' || item.category === 'Trabalho')
+  const distributionStats = categories
+    .map((cat) => {
+      const count = completedTasks.filter((t) => resolveCategory(t, categories) === cat).length
+      const percent = totalCompleted > 0 ? Math.round((count / totalCompleted) * 100) : 0
+      return {
+        category: cat,
+        count,
+        percent,
+        color: getCategoryColor(cat),
+      }
+    })
+    .filter((item) => item.count > 0 || item.category === categories[0] || item.category === categories[1])
 
   const mutate = async (action: () => Promise<void>) => {
     if (locked.current) return
@@ -211,6 +223,83 @@ function App() {
       setAnnouncement(`Tarefa adicionada em ${newCategory}.`)
     })
     inputRef.current?.focus()
+  }
+
+  const changeTaskCategory = (taskId: number, newCat: string) => {
+    void mutate(async () => {
+      const updated = await tarefasApi.atualizar(taskId, { lista: newCat.toLowerCase() })
+      setTasks((current) => current.map((t) => (t.id === taskId ? updated : t)))
+      setAnnouncement(`Categoria alterada para ${newCat}.`)
+    })
+  }
+
+  const handleAddNewCategory = () => {
+    const name = window.prompt('Digite o nome da nova categoria:')?.trim()
+    if (!name) return
+    const formatted = name.charAt(0).toUpperCase() + name.slice(1)
+    if (!categories.includes(formatted)) {
+      const updated = [...categories, formatted]
+      setCategories(updated)
+      try {
+        localStorage.setItem('todolist_categories', JSON.stringify(updated))
+      } catch {}
+    }
+    setNewCategory(formatted)
+    setAnnouncement(`Categoria "${formatted}" criada.`)
+  }
+
+  const handleRenameCategory = (oldCat: string) => {
+    const name = window.prompt(`Renomear categoria "${oldCat}" para:`, oldCat)?.trim()
+    if (!name || name === oldCat) return
+    const formatted = name.charAt(0).toUpperCase() + name.slice(1)
+    const updated = categories.map((c) => (c === oldCat ? formatted : c))
+    setCategories(updated)
+    try {
+      localStorage.setItem('todolist_categories', JSON.stringify(updated))
+    } catch {}
+
+    if (newCategory === oldCat) setNewCategory(formatted)
+    if (selectedCategory === oldCat) setSelectedCategory(formatted)
+
+    void mutate(async () => {
+      const tasksToUpdate = tasks.filter(
+        (t) => resolveCategory(t, categories).toLowerCase() === oldCat.toLowerCase()
+      )
+      const updatedTasks = await Promise.all(
+        tasksToUpdate.map((t) => tarefasApi.atualizar(t.id, { lista: formatted.toLowerCase() }))
+      )
+      const updatedMap = new Map(updatedTasks.map((t) => [t.id, t]))
+      setTasks((current) => current.map((t) => updatedMap.get(t.id) || t))
+      setAnnouncement(`Categoria renomeada para "${formatted}".`)
+    })
+  }
+
+  const handleDeleteCategory = (catToDelete: string) => {
+    if (categories.length <= 1) return
+    if (!window.confirm(`Tem certeza que deseja excluir a categoria "${catToDelete}"?`)) return
+    const updated = categories.filter((c) => c !== catToDelete)
+    setCategories(updated)
+    try {
+      localStorage.setItem('todolist_categories', JSON.stringify(updated))
+    } catch {}
+
+    const fallback = updated[0]
+    if (newCategory === catToDelete) setNewCategory(fallback)
+    if (selectedCategory === catToDelete) setSelectedCategory('Todas')
+
+    void mutate(async () => {
+      const tasksToUpdate = tasks.filter(
+        (t) => resolveCategory(t, categories).toLowerCase() === catToDelete.toLowerCase()
+      )
+      if (tasksToUpdate.length > 0) {
+        const updatedTasks = await Promise.all(
+          tasksToUpdate.map((t) => tarefasApi.atualizar(t.id, { lista: fallback.toLowerCase() }))
+        )
+        const updatedMap = new Map(updatedTasks.map((t) => [t.id, t]))
+        setTasks((current) => current.map((t) => updatedMap.get(t.id) || t))
+      }
+      setAnnouncement(`Categoria "${catToDelete}" excluída.`)
+    })
   }
 
   const completeTask = (id: number) =>
@@ -327,7 +416,7 @@ function App() {
             )}
 
             {visibleTasks.map((task, index) => {
-              const category = resolveCategory(task)
+              const category = resolveCategory(task, categories)
               return (
                 <article
                   className={`task-row ${dragged === task.id ? 'dragging' : ''} ${dropTarget === task.id ? 'drop-target' : ''}`}
@@ -371,7 +460,42 @@ function App() {
                   </button>
                   <div className="task-content">
                     <span className="task-title">{task.titulo}</span>
-                    <span className="tag-badge">{category}</span>
+                    <div className="tag-badge-wrapper">
+                      <select
+                        className="tag-badge-select"
+                        value={category}
+                        aria-label={`Alterar categoria da tarefa ${task.titulo}`}
+                        title="Clique para alterar a categoria"
+                        disabled={busy}
+                        onChange={(e) => {
+                          const val = e.target.value
+                          if (val === '__ADD_NEW__') {
+                            const nova = window.prompt('Digite o nome da nova categoria:')?.trim()
+                            if (nova) {
+                              const formatada = nova.charAt(0).toUpperCase() + nova.slice(1)
+                              if (!categories.includes(formatada)) {
+                                const upd = [...categories, formatada]
+                                setCategories(upd)
+                                try {
+                                  localStorage.setItem('todolist_categories', JSON.stringify(upd))
+                                } catch {}
+                              }
+                              changeTaskCategory(task.id, formatada)
+                            }
+                          } else {
+                            changeTaskCategory(task.id, val)
+                          }
+                        }}
+                      >
+                        {categories.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                        <option value="__ADD_NEW__">+ Nova categoria...</option>
+                      </select>
+                      <ChevronDown size={10} className="tag-badge-arrow" aria-hidden="true" />
+                    </div>
                   </div>
                   <span className="task-actions">
                     <button
@@ -409,16 +533,58 @@ function App() {
             <div className="add-section">
               <div className="add-category-row">
                 <span className="add-cat-label">Categoria:</span>
-                {(['Trabalho', 'Estudos', 'Faculdade', 'Compras'] as const).map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    className={`add-cat-btn ${newCategory === cat ? 'active' : ''}`}
-                    onClick={() => setNewCategory(cat)}
-                  >
-                    {cat}
-                  </button>
+                {categories.map((cat) => (
+                  <div key={cat} className="cat-chip-container">
+                    <button
+                      type="button"
+                      className={`add-cat-btn ${newCategory === cat ? 'active' : ''}`}
+                      onClick={() => setNewCategory(cat)}
+                    >
+                      {cat}
+                    </button>
+                    {isManagingCategories && (
+                      <div className="cat-manage-actions">
+                        <button
+                          type="button"
+                          className="cat-edit-btn"
+                          title={`Renomear categoria ${cat}`}
+                          onClick={() => handleRenameCategory(cat)}
+                        >
+                          <Pencil size={11} />
+                        </button>
+                        {categories.length > 1 && (
+                          <button
+                            type="button"
+                            className="cat-delete-btn"
+                            title={`Excluir categoria ${cat}`}
+                            onClick={() => handleDeleteCategory(cat)}
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 ))}
+
+                <button
+                  type="button"
+                  className="add-cat-new-btn"
+                  title="Adicionar nova categoria"
+                  onClick={handleAddNewCategory}
+                >
+                  <Plus size={13} />
+                  <span>Nova</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`add-cat-manage-toggle ${isManagingCategories ? 'active' : ''}`}
+                  title={isManagingCategories ? 'Concluir edição de categorias' : 'Editar categorias'}
+                  onClick={() => setIsManagingCategories(!isManagingCategories)}
+                >
+                  <Pencil size={12} />
+                </button>
               </div>
 
               <form
@@ -428,11 +594,10 @@ function App() {
                   void addTask()
                 }}
               >
-                <Plus className="add-mark" size={21} aria-hidden="true" />
                 <input
                   ref={inputRef}
                   aria-label="Nova tarefa"
-                  placeholder={`Nova tarefa em ${newCategory}…`}
+                  placeholder="Nova tarefa"
                   value={newTitle}
                   onChange={(event) => setNewTitle(event.target.value)}
                   readOnly={busy}
@@ -506,11 +671,11 @@ function App() {
 
             {/* Filtros por Categoria */}
             <div className="history-filters" role="tablist" aria-label="Filtro de categoria">
-              {(['Todas', 'Estudos', 'Trabalho', 'Faculdade', 'Compras'] as const).map((cat) => {
+              {(['Todas', ...categories] as const).map((cat) => {
                 const count =
                   cat === 'Todas'
                     ? completedTasks.length
-                    : completedTasks.filter((t) => resolveCategory(t) === cat).length
+                    : completedTasks.filter((t) => resolveCategory(t, categories) === cat).length
                 return (
                   <button
                     key={cat}
@@ -535,7 +700,7 @@ function App() {
                 </p>
               ) : (
                 filteredCompletedTasks.map((task) => {
-                  const cat = resolveCategory(task)
+                  const cat = resolveCategory(task, categories)
                   const tempoRelativo = formatTempoRelativo(task.concluida_em)
                   const dataFormatada = task.concluida_em
                     ? new Date(task.concluida_em).toLocaleDateString('pt-BR')

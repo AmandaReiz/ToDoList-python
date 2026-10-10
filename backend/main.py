@@ -5,9 +5,10 @@ from datetime import datetime
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from mangum import Mangum
 from sqlmodel import Session, select
 
-from database import criar_banco, obter_sessao
+from database import criar_banco, obter_sessao, sincronizar_para_s3
 from models import Tarefa
 from schemas import TarefaAtualizar, TarefaCriar, TarefasReordenar
 
@@ -21,21 +22,23 @@ async def ciclo_de_vida(app: FastAPI):
 
 app = FastAPI(title="API do To-do da Amanda", lifespan=ciclo_de_vida)
 
-# O navegador bloqueia, por segurança, pedidos entre portas diferentes.
-# Esta lista libera somente o endereço do React durante o desenvolvimento.
+# Permite requisições de origens locais e de produção (CloudFront, S3, etc.)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Inicializa o banco na importação (essencial para ambientes serverless)
+criar_banco()
+
 
 @app.get("/")
 def read_root():
     """Rota de teste: confirma que o FastAPI está no ar."""
-    return {"message": "API do To-do funcionando!"}
+    return {"message": "API do To-do funcionando na nuvem!"}
 
 
 @app.get("/tarefas", response_model=list[Tarefa])
@@ -53,6 +56,7 @@ def criar_tarefa(dados: TarefaCriar, sessao: Session = Depends(obter_sessao)):
     sessao.add(tarefa)
     sessao.commit()
     sessao.refresh(tarefa)
+    sincronizar_para_s3()
     return tarefa
 
 
@@ -72,6 +76,7 @@ def reordenar_tarefas(dados: TarefasReordenar, sessao: Session = Depends(obter_s
         tarefa.ordem = ordem
         sessao.add(tarefa)
     sessao.commit()
+    sincronizar_para_s3()
     return resultado
 
 
@@ -100,6 +105,7 @@ def atualizar_tarefa(
     sessao.add(tarefa)
     sessao.commit()
     sessao.refresh(tarefa)
+    sincronizar_para_s3()
     return tarefa
 
 
@@ -112,4 +118,9 @@ def excluir_tarefa(tarefa_id: int, sessao: Session = Depends(obter_sessao)):
 
     sessao.delete(tarefa)
     sessao.commit()
+    sincronizar_para_s3()
     return {"ok": True}
+
+
+# Handler padrão para a AWS Lambda
+handler = Mangum(app, lifespan="off")

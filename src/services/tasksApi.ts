@@ -10,7 +10,7 @@ export type TarefaDaApi = {
   concluida_em?: string | null
 }
 
-const API_URL = 'http://127.0.0.1:8000'
+const API_URL = (import.meta.env.VITE_API_URL as string | undefined) || 'http://127.0.0.1:8000'
 
 async function pedido<T>(caminho: string, opcoes?: RequestInit): Promise<T> {
   const resposta = await fetch(`${API_URL}${caminho}`, {

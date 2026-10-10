@@ -180,6 +180,51 @@ h1 {
   letter-spacing: -.01em;
 }
 
+.tag-badge-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.tag-badge-select {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 18px 3px 8px;
+  border-radius: 6px;
+  background: #f3f3f3;
+  color: #555;
+  white-space: nowrap;
+  letter-spacing: -.01em;
+  border: 1px solid transparent;
+  cursor: pointer;
+  outline: none;
+  transition: all .15s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.tag-badge-select:hover {
+  background: #eaeaea;
+  border-color: #d1d5db;
+  color: #111;
+}
+
+.tag-badge-select:focus-visible {
+  border-color: #161616;
+  background: #fff;
+}
+
+.tag-badge-arrow {
+  position: absolute;
+  right: 5px;
+  pointer-events: none;
+  color: #888;
+  display: flex;
+  align-items: center;
+}
+
 .task-actions {
   display: flex;
   align-items: center;
@@ -246,6 +291,63 @@ h1 {
   border-color: #161616;
 }
 
+.cat-chip-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.cat-manage-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.cat-edit-btn, .cat-delete-btn {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: #f0f0f0;
+  border-radius: 4px;
+  color: #666;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.cat-edit-btn:hover { background: #e0e0e0; color: #111; }
+.cat-delete-btn:hover { background: #fee2e2; color: #dc2626; }
+
+.add-cat-new-btn, .add-cat-manage-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 9999px;
+  border: 1px dashed #ccc;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+
+.add-cat-new-btn:hover, .add-cat-manage-toggle:hover {
+  border-color: #999;
+  color: #111;
+  background: #f7f7f7;
+}
+
+.add-cat-manage-toggle.active {
+  border-style: solid;
+  border-color: #161616;
+  background: #161616;
+  color: #fff;
+}
+
 .inline-add {
   display: flex;
   align-items: center;
@@ -254,12 +356,11 @@ h1 {
   border-bottom: 1px solid #e8e8e8;
 }
 
-.add-mark { flex: 0 0 23px; color: #777; }
 .inline-add input {
   width: 0;
   min-width: 0;
   flex: 1;
-  padding: 12px 0;
+  padding: 12px 4px;
   border: 0;
   background: transparent;
   color: #111;
